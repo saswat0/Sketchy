@@ -34,14 +34,14 @@ num_epochs = 20
 batch_size = 5
 file_names = []
 
-CelebA_SKETCH_PATH = '~/Project/CelebA_Sketch'
-CelebA_IMAGE_PATH = '~/Project/img_align_celeba'
+CelebA_SKETCH_PATH = '~/Sketchy/CelebA_Sketch'
+CelebA_IMAGE_PATH = '~/Sketchy/img_align_celeba'
 
-BUILDING_SKETCH_PATH = '~/Project/ZuBuD_Sketch_Aug'
-BUILDING_IMAGE_PATH = '~/Project/ZuBuD_Aug'
+BUILDING_SKETCH_PATH = '~/Sketchy/ZuBuD_Sketch_Aug'
+BUILDING_IMAGE_PATH = '~/Sketchy/ZuBuD_Aug'
 
-CUHK_SKETCH_PATH = '~/Project/CUHK_Sketch'
-CUHK_IMAGE_PATH = '~/Project/CUHK'
+CUHK_SKETCH_PATH = '~/Sketchy/CUHK_Sketch'
+CUHK_IMAGE_PATH = '~/Sketchy/CUHK'
 
 
 base_model = vgg16.VGG16(weights='imagenet', include_top=False)
