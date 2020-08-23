@@ -122,14 +122,14 @@ def main():
  
 
 
-               for i in range(n_point):
-                   length = 0
-                   while length < min_length:
-                       ws, hs, wt, ht, length = gen_color_line(mat, dir,max_length,max_dif)
-                   gray_pic[ws:wt, hs:ht, :] = mat[ws:wt, hs:ht, :]
+            #    for i in range(n_point):
+            #        length = 0
+            #        while length < min_length:
+            #            ws, hs, wt, ht, length = gen_color_line(mat, dir,max_length,max_dif)
+            #        gray_pic[ws:wt, hs:ht, :] = mat[ws:wt, hs:ht, :]
 
-                gray_pic = np.append(real, gray_pic, axis=1)
-                final_img = Image.fromarray(gray_pic)
+            #     gray_pic = np.append(real, gray_pic, axis=1)
+            #     final_img = Image.fromarray(gray_pic)
 
                 im = final_img
                 w, h = im.size
@@ -151,7 +151,7 @@ def main():
                 print('done!' + str(count))
 
 
-                io.imsave(os.path.join(out_dir, filename), differencedIm2.astype(np.uint8))
+                # io.imsave(os.path.join(out_dir, filename), differencedIm2.astype(np.uint8))
 
 
 if __name__ == '__main__':
