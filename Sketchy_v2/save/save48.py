@@ -46,3 +46,30 @@ def batchnorm(input,channels):
         normalized = tf.nn.batch_normalization(input, mean, variance, offset, scale, variance_epsilon=variance_epsilon)
         return normalized
 
+def conv(batch_input, out_channels, stride):
+    with tf.variable_scope("conv"):
+        in_channels = batch_input.get_shape()[3]
+        filter = tf.get_variable("filter", [4, 4, in_channels, out_channels], dtype=tf.float32,
+                                 initializer=tf.random_normal_initializer(0, 0.02))
+        # [batch, in_height, in_width, in_channels], [filter_width, filter_height, in_channels, out_channels]
+        #     => [batch, out_height, out_width, out_channels]
+        padded_input = tf.pad(batch_input, [[0, 0], [1, 1], [1, 1], [0, 0]], mode="CONSTANT")
+        conv = tf.nn.conv2d(padded_input, filter, [1, stride, stride, 1], padding="VALID")
+        return conv
+
+#import tensorflow.contrib.layers as ly
+
+#ly.conv2d_transpose
+def deconv(batch_input, out_channels, cha):
+    with tf.variable_scope("deconv"):
+        batch, in_height, in_width, in_channels = [d for d in batch_input.get_shape()]
+        s = tf.shape(batch_input)
+        s *= tf.constant([1, 2, 2, 1])
+        s -= tf.constant([0, 0, 0, cha])
+        filter = tf.get_variable("filter", [4, 4, out_channels, in_channels], dtype=tf.float32,
+                                 initializer=tf.random_normal_initializer(0, 0.02))
+        # [batch, in_height, in_width, in_channels], [filter_width, filter_height, out_channels, in_channels]
+        #     => [batch, out_height, out_width, out_channels]
+        conv = tf.nn.conv2d_transpose(batch_input, filter, s,
+                                      [1, 2, 2, 1], padding="SAME")
+        return conv
