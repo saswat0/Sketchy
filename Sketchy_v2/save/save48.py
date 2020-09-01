@@ -153,9 +153,9 @@ def create_generator(generator_inputs, generator_outputs_channels):
     return layers[-1]
 
 def main():
-    im_test = io.imread('/home/bo718.wang/irfan/pacling/train_2_out/images/u1025-inputs.png')
+    im_test = io.imread('./train_2_out/images/u1025-inputs.png')
     im_test = transform.resize(im_test, [512, 256,3])
-    in_dir = "/home/bo718.wang/irfan/pacling/train_2/"
+    in_dir = "./train_2/"
     out_dir = "./out"
     tf.reset_default_graph()
     im = tf.placeholder(tf.float32, [None, None, 3])
