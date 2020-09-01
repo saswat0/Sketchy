@@ -151,3 +151,52 @@ def create_generator(generator_inputs, generator_outputs_channels):
         layers.append(output)
 
     return layers[-1]
+
+def main():
+    im_test = io.imread('/home/bo718.wang/irfan/pacling/train_2_out/images/u1025-inputs.png')
+    im_test = transform.resize(im_test, [512, 256,3])
+    in_dir = "/home/bo718.wang/irfan/pacling/train_2/"
+    out_dir = "./out"
+    tf.reset_default_graph()
+    im = tf.placeholder(tf.float32, [None, None, 3])
+    # im1 = tf.placeholder(tf.float32, [None, None, 3])
+    # im1 = tf.placeholder(tf.float32, [None, None, 3])
+    im1 = tf.expand_dims(im, 0)
+    im1 *= 2
+    im1 -= 1
+    # im1 *= 256
+    # im1 -= 128
+    with tf.variable_scope('generator'):
+        g_out = create_generator(im1, 3)
+    # g_out *= 128
+    g_out /= 2
+    g_out += 0.5
+    # out = g_out + 128.
+    out = tf.identity(g_out, 'out')
+    # print(out.name)
+    # print('--------------------')
+    # print("type of out",type(g_out))
+    saver = tf.train.Saver(max_to_keep=1)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        pretrained = tf.train.latest_checkpoint(in_dir)
+        saver.restore(sess, pretrained)
+        out = sess.run(out, feed_dict={im: im_test})
+        io.imsave('out.jpg', out[0])
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        pretrained = tf.train.latest_checkpoint(in_dir)
+        saver.restore(sess, pretrained)
+        #   TF SAVER
+        checkpoint_path = in_dir + 'model-881800'
+         #  FREEZE GRAPH
+        tf.train.write_graph(sess.graph_def, in_dir,
+                             'model.pb')
+
+        freeze_graph.freeze_graph(in_dir + '/model.pb', '', False,
+                                  checkpoint_path, 'out',
+                                  'save/restore_all', 'save/Const:0', out_dir + '/119_cartoon_size_sketch.pb', False, "")
+        print('==================')
+
+
+main()
