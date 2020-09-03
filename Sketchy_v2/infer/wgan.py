@@ -527,6 +527,95 @@ def main():
 
         return
 
+    examples = load_examples()
+    print("examples count = %d" % examples.count)
 
+    # inputs and targets are [batch_size, height, width, channels]
+    net1 = vgg16.Vgg16()
+    net2 = vgg16.Vgg16()
+    model = create_model(examples.inputs, examples.targets, net1, net2)
+
+    # undo colorization splitting on images that we use for display/output
+
+
+    inputs = deprocess(examples.inputs)
+    targets = deprocess(examples.targets)
+    outputs = deprocess(model.outputs)
+
+    def convert(image):
+        if a.aspect_ratio != 1.0:
+            # upscale to correct aspect ratio
+            size = [CROP_SIZE, int(round(CROP_SIZE * a.aspect_ratio))]
+            image = tf.image.resize_images(image, size=size, method=tf.image.ResizeMethod.BICUBIC)
+
+        return tf.image.convert_image_dtype(image, dtype=tf.uint8, saturate=True)
+
+    # reverse any processing on images so they can be written to disk or displayed to user
+    with tf.name_scope("convert_inputs"):
+        converted_inputs = convert(inputs)
+
+    with tf.name_scope("convert_targets"):
+        converted_targets = convert(targets)
+
+    with tf.name_scope("convert_outputs"):
+        converted_outputs = convert(outputs)
+
+    with tf.name_scope("encode_images"):
+        display_fetches = {
+            "paths": examples.paths,
+            "inputs": tf.map_fn(tf.image.encode_png, converted_inputs, dtype=tf.string, name="input_pngs"),
+            "targets": tf.map_fn(tf.image.encode_png, converted_targets, dtype=tf.string, name="target_pngs"),
+            "outputs": tf.map_fn(tf.image.encode_png, converted_outputs, dtype=tf.string, name="output_pngs"),
+        }
+
+    # summaries
+    with tf.name_scope("inputs_summary"):
+        tf.summary.image("inputs", converted_inputs)
+
+    with tf.name_scope("targets_summary"):
+        tf.summary.image("targets", converted_targets)
+
+    with tf.name_scope("outputs_summary"):
+        tf.summary.image("outputs", converted_outputs)
+
+    with tf.name_scope("predict_real_summary"):
+        tf.summary.image("predict_real", tf.image.convert_image_dtype(model.predict_real, dtype=tf.uint8))
+
+    with tf.name_scope("predict_fake_summary"):
+        tf.summary.image("predict_fake", tf.image.convert_image_dtype(model.predict_fake, dtype=tf.uint8))
+
+    tf.summary.scalar("discriminator_loss", model.discrim_loss)
+    tf.summary.scalar("generator_loss_GAN", model.gen_loss_GAN)
+    tf.summary.scalar("generator_loss_L1", model.gen_loss_L1)
+    tf.summary.scalar("generator_loss_tv", model.gen_loss_tv)
+    tf.summary.scalar("generator_loss_f", model.gen_loss_f)
+    for var in tf.trainable_variables():
+        tf.summary.histogram(var.op.name + "/values", var)
+
+    for grad, var in model.discrim_grads_and_vars + model.gen_grads_and_vars:
+        tf.summary.histogram(var.op.name + "/gradients", grad)
+
+    with tf.name_scope("parameter_count"):
+        parameter_count = tf.reduce_sum([tf.reduce_prod(tf.shape(v)) for v in tf.trainable_variables()])
+
+    saver = tf.train.Saver(max_to_keep=1)
+
+    logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
+    sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with sv.managed_session(config=config) as sess:
+        print("parameter_count =", sess.run(parameter_count))
+
+        if a.checkpoint is not None:
+            print("loading model from checkpoint")
+            checkpoint = tf.train.latest_checkpoint(a.checkpoint)
+            saver.restore(sess, checkpoint)
+
+        max_steps = 2 ** 32
+        if a.max_epochs is not None:
+            max_steps = examples.steps_per_epoch * a.max_epochs
+        if a.max_steps is not None:
+            max_steps = a.max_steps
 
 main()
