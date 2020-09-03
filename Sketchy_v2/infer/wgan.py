@@ -618,4 +618,84 @@ def main():
         if a.max_steps is not None:
             max_steps = a.max_steps
 
+        if a.mode == "test":
+            # testing
+            # at most, process the test data once
+            max_steps = min(examples.steps_per_epoch, max_steps)
+            for step in range(max_steps):
+                results = sess.run(display_fetches)
+                filesets = save_images(results)
+                for i, f in enumerate(filesets):
+                    print("evaluated image", f["name"])
+                index_path = append_index(filesets)
+
+            print("wrote index at", index_path)
+        else:
+            # training
+            start = time.time()
+
+            for step in range(max_steps):
+                def should(freq):
+                    return freq > 0 and ((step + 1) % freq == 0 or step == max_steps - 1)
+
+                options = None
+                run_metadata = None
+                if should(a.trace_freq):
+                    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                    run_metadata = tf.RunMetadata()
+
+                fetches = {
+                    "train": model.train,
+                    "global_step": sv.global_step,
+                }
+
+                if should(a.progress_freq):
+                    fetches["discrim_loss"] = model.discrim_loss
+                    fetches["gen_loss_GAN"] = model.gen_loss_GAN
+                    fetches["gen_loss_L1"] = model.gen_loss_L1
+                    fetches["gen_loss_tv"] = model.gen_loss_tv
+                    fetches["gen_loss_f"] = model.gen_loss_f
+                if should(a.summary_freq):
+                    fetches["summary"] = sv.summary_op
+
+                if should(a.display_freq):
+                    fetches["display"] = display_fetches
+
+                results = sess.run(fetches, options=options, run_metadata=run_metadata)
+
+                if should(a.summary_freq):
+                    print("recording summary")
+                    sv.summary_writer.add_summary(results["summary"], results["global_step"])
+
+                if should(a.display_freq):
+                    print("saving display images")
+                    filesets = save_images(results["display"], step=results["global_step"])
+                    append_index(filesets, step=True)
+
+                if should(a.trace_freq):
+                    print("recording trace")
+                    sv.summary_writer.add_run_metadata(run_metadata, "step_%d" % results["global_step"])
+
+                if should(a.progress_freq):
+                    # global_step will have the correct step count if we resume from a checkpoint
+                    train_epoch = math.ceil(results["global_step"] / examples.steps_per_epoch)
+                    train_step = (results["global_step"] - 1) % examples.steps_per_epoch + 1
+                    rate = (step + 1) * a.batch_size / (time.time() - start)
+                    remaining = (max_steps - step) * a.batch_size / rate
+                    print("progress  epoch %d  step %d  image/sec %0.1f  remaining %dm" % (
+                    train_epoch, train_step, rate, remaining / 60))
+                    print("discrim_loss", results["discrim_loss"])
+                    print("gen_loss_GAN", results["gen_loss_GAN"])
+                    print("gen_loss_L1", results["gen_loss_L1"])
+                    print("gen_loss_tv", results["gen_loss_tv"])
+                    print("gen_loss_f", results["gen_loss_f"])
+
+                if should(a.save_freq):
+                    print("saving model")
+                    saver.save(sess, os.path.join(a.output_dir, "model"), global_step=sv.global_step)
+
+                if sv.should_stop():
+                    break
+
+
 main()
