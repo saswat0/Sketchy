@@ -414,3 +414,29 @@ def save_images(fetches, step=None):
                 f.write(contents)
         filesets.append(fileset)
     return filesets
+
+def append_index(filesets, step=False):
+    index_path = os.path.join(a.output_dir, "index.html")
+    if os.path.exists(index_path):
+        index = open(index_path, "a")
+    else:
+        index = open(index_path, "w")
+        index.write("<html><body><table><tr>")
+        if step:
+            index.write("<th>step</th>")
+        index.write("<th>name</th><th>input</th><th>output</th><th>target</th></tr>")
+
+    for fileset in filesets:
+        index.write("<tr>")
+
+        if step:
+            index.write("<td>%d</td>" % fileset["step"])
+        index.write("<td>%s</td>" % fileset["name"])
+
+        for kind in ["inputs", "outputs", "targets"]:
+            index.write("<td><img src='images/%s'></td>" % fileset[kind])
+
+        index.write("</tr>")
+    return index_path
+
+
