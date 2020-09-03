@@ -474,4 +474,59 @@ def main():
     with open(os.path.join(a.output_dir, "options.json"), "w") as f:
         f.write(json.dumps(vars(a), sort_keys=True, indent=4))
 
+    if a.mode == "export":
+        # export the generator to a meta graph that can be imported later for standalone generation
+
+
+        input = tf.placeholder(tf.string, shape=[1])
+        input_data = tf.decode_base64(input[0])
+        input_image = tf.image.decode_png(input_data)
+        # remove alpha channel if present
+        input_image = input_image[:, :, :3]
+        input_image = tf.image.convert_image_dtype(input_image, dtype=tf.float32)
+        input_image.set_shape([CROP_SIZE, CROP_SIZE, 3])
+        batch_input = tf.expand_dims(input_image, axis=0)
+
+        with tf.variable_scope("generator") as scope:
+            batch_output = deprocess(create_generator(preprocess(batch_input), 3))
+
+        output_image = tf.image.convert_image_dtype(batch_output, dtype=tf.uint8)[0]
+        if a.output_filetype == "png":
+            output_data = tf.image.encode_png(output_image)
+        elif a.output_filetype == "jpeg":
+            output_data = tf.image.encode_jpeg(output_image, quality=80)
+        else:
+            raise Exception("invalid filetype")
+        output = tf.convert_to_tensor([tf.encode_base64(output_data)])
+
+        key = tf.placeholder(tf.string, shape=[1])
+        inputs = {
+            "key": key.name,
+            "input": input.name
+        }
+        tf.add_to_collection("inputs", json.dumps(inputs))
+        outputs = {
+            "key": tf.identity(key).name,
+            "output": output.name,
+        }
+        tf.add_to_collection("outputs", json.dumps(outputs))
+
+        init_op = tf.global_variables_initializer()
+        restore_saver = tf.train.Saver()
+        export_saver = tf.train.Saver()
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.Session(config=config) as sess:
+            sess.run(init_op)
+            print("loading model from checkpoint")
+            checkpoint = tf.train.latest_checkpoint(a.checkpoint)
+            restore_saver.restore(sess, checkpoint)
+            print("exporting model")
+            export_saver.export_meta_graph(filename=os.path.join(a.output_dir, "export.meta"))
+            export_saver.save(sess, os.path.join(a.output_dir, "export"), write_meta_graph=False)
+
+        return
+
+
+
 main()
