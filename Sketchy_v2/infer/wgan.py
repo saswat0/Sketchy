@@ -439,4 +439,39 @@ def append_index(filesets, step=False):
         index.write("</tr>")
     return index_path
 
+def main():
+#    if tf.__version__ != "1.0.0":
+ #       raise Exception("Tensorflow version 1.0.0 required")
 
+    if a.seed is None:
+        a.seed = random.randint(0, 2 ** 31 - 1)
+
+    tf.set_random_seed(a.seed)
+    np.random.seed(a.seed)
+    random.seed(a.seed)
+
+    if not os.path.exists(a.output_dir):
+        os.makedirs(a.output_dir)
+
+    if a.mode == "test" or a.mode == "export":
+        if a.checkpoint is None:
+            raise Exception("checkpoint required for test mode")
+
+        # load some options from the checkpoint
+        options = {"which_direction", "ngf", "ndf"}
+        with open(os.path.join(a.checkpoint, "options.json")) as f:
+            for key, val in json.loads(f.read()).items():
+                if key in options:
+                    print("loaded", key, "=", val)
+                    setattr(a, key, val)
+        # disable these features in test mode
+        a.scale_size = CROP_SIZE
+        a.flip = False
+
+    for k, v in a._get_kwargs():
+        print(k, "=", v)
+
+    with open(os.path.join(a.output_dir, "options.json"), "w") as f:
+        f.write(json.dumps(vars(a), sort_keys=True, indent=4))
+
+main()
