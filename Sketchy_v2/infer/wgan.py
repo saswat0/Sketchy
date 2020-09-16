@@ -12,7 +12,7 @@ import random
 import collections
 import math
 import time
-from my_vgg import vgg16
+from keras.applications import vgg16
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_dir", default='test_pic/middle', help="path to folder containing images")
